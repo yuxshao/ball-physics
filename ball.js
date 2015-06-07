@@ -1,6 +1,6 @@
-function Ball(r, x, y) {
+function Ball(r, x, y, input) {
   this.vel = {x: 0, y: 0};
-  this.input = {x: 0, y: 0};
+  this.input = input;
   this.accel = {x: 0, y: 0};
   this.maxAccel = 0.04;
   this.termVel = 4;
@@ -15,27 +15,54 @@ function Ball(r, x, y) {
   this.graphic.position.y = y;
 };
 
-Ball.prototype.setInput = function (input) {
-  this.input = input;
+Ball.prototype.takeInput = function () {
   this.accel.x = this.maxAccel*(this.input.x - this.vel.x/this.termVel);
   this.accel.y = this.maxAccel*(this.input.y - this.vel.y/this.termVel);
   this.vel.x += this.accel.x; this.vel.y += this.accel.y;
 }
 
-Ball.prototype.collisions = function (map) {
-  var tilePos = {x: Math.floor(this.graphic.position.x/map.tileLength), y: Math.floor(this.graphic.position.y/map.tileLength)};
+Ball.prototype.collisions = function (map, balls) {
+  this.tileCollisions(map);
+  this.ballCollisions(balls);
+}
+
+Ball.prototype.ballCollisions = function (balls) {
   this.graphic.position.x += this.vel.x; this.graphic.position.y += this.vel.y;
-  for (var x = Math.max(0, tilePos.x-1); x <= Math.min(map.dim.x-1, tilePos.x+1); ++x) {
-    for (var y = Math.max(0, tilePos.y-1); y <= Math.min(map.dim.y-1, tilePos.y+1); ++y) {
+  for (var i = 0; i < balls.length; ++i) {
+    var b = balls[i];
+    var dv = {x: b.vel.x - this.vel.x, y: b.vel.y - this.vel.y};
+    var dx = b.graphic.position.x - this.graphic.position.x, dy = b.graphic.position.y - this.graphic.position.y;
+    var d = Math.sqrt(distanceSq(this.graphic.position, b.graphic.position));
+    if (d < this.radius + b.radius && b != this) {
+      this.graphic.position.x += dx*(1-(this.radius+b.radius)/d);
+      this.graphic.position.y += dy*(1-(this.radius+b.radius)/d);
+      var mass = Math.min(this.radius*this.radius, b.radius*b.radius);
+      var moment = {x: mass*(dv.x*dx*dx + dv.y*dx*dy)/(dx*dx + dy*dy), y: mass*(dv.x*dx*dy + dv.y*dy*dy)/(dx*dx+dy*dy)};
+      this.vel.x += moment.x/(this.radius*this.radius);
+      this.vel.y += moment.y/(this.radius*this.radius);
+      b.vel.x -= moment.x/(b.radius*b.radius);
+      b.vel.y -= moment.y/(b.radius*b.radius);
+    }
+  }
+}
+
+Ball.prototype.tileCollisions = function (map) {
+  var tilePos =
+    {x: Math.floor((this.graphic.position.x-this.radius)/map.tileLength), y: Math.floor((this.graphic.position.y-this.radius)/map.tileLength), X: Math.ceil((this.graphic.position.x+this.radius)/map.tileLength), Y: Math.ceil((this.graphic.position.y+this.radius)/map.tileLength)};
+  console.log(tilePos.x + " " + tilePos.X);
+  this.graphic.position.x += this.vel.x; this.graphic.position.y += this.vel.y;
+  for (var x = Math.max(0, tilePos.x); x <= Math.min(map.dim.x-1, tilePos.X); ++x) {
+    for (var y = Math.max(0, tilePos.y); y <= Math.min(map.dim.y-1, tilePos.Y); ++y) {
       if (!map.tiles[x][y]) continue;
-      collision = collisionPoint({x: this.graphic.position.x, y: this.graphic.position.y, radius: map.tileLength/2}, 
+      collision = collisionPoint({x: this.graphic.position.x, y: this.graphic.position.y, radius: this.radius}, 
           {x: x*map.tileLength, y: y*map.tileLength, width: map.tileLength, height: map.tileLength});
       if (collision) {
         switch (map.tiles[x][y]) {
           case 1:
-            this.graphic.position.x -= this.vel.x; this.graphic.position.y -= this.vel.y;
-            point.position = collision;
             var dx = collision.x - this.graphic.position.x, dy = collision.y - this.graphic.position.y;
+            var d = Math.sqrt(dx*dx + dy*dy);
+            this.graphic.position.x += dx*(1 - this.radius/d);
+            this.graphic.position.y += dy*(1 - this.radius/d);
             dist = Math.sqrt(distanceSq(collision, this.graphic.position));
             var dvx = -dx*(this.vel.x*dx + this.vel.y*dy)/(dx*dx + dy*dy)*(1+this.bounciness);
                 dvy = -dy*(this.vel.x*dx + this.vel.y*dy)/(dx*dx + dy*dy)*(1+this.bounciness);

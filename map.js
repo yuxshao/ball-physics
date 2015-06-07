@@ -16,7 +16,6 @@ function Map(w, h, tileLength) {
 }
 
 function MapGraphic(renderer, map) {
-  this.map = map;
   this.texture = new PIXI.RenderTexture(renderer, map.dim.x*map.tileLength, map.dim.y*map.tileLength);
   this.sprite = new PIXI.Sprite(this.texture);
   for (var x = 0; x < map.dim.x; ++x) {
@@ -38,7 +37,6 @@ function MapGraphic(renderer, map) {
 }
 
 MapGraphic.prototype.setTile = function (x, y, n) {
-  this.map.tiles[x][y] = n;
   var block = new PIXI.Graphics();
   block.lineStyle(1);
   var color;
@@ -50,4 +48,13 @@ MapGraphic.prototype.setTile = function (x, y, n) {
   block.beginFill(color);
   block.drawRect(x*this.map.tileLength, y*this.map.tileLength, this.map.tileLength, this.map.tileLength);
   this.texture.render(block);
+}
+
+Map.prototype.makeGraphic = function (renderer) {
+  this.graphic = new MapGraphic(renderer, this);
+}
+
+Map.prototype.setTile = function (x, y, n) {
+  this.tiles[x][y] = n;
+  if (this.graphic) this.graphic.setTile(x, y, n);
 }
