@@ -23,10 +23,10 @@ Ball.prototype.takeInput = function () {
 
 Ball.prototype.collisions = function (map, balls) {
   this.tileCollisions(map);
-  this.ballCollisions(balls);
+  this.ballCollisions(map, balls);
 }
 
-Ball.prototype.ballCollisions = function (balls) {
+Ball.prototype.ballCollisions = function (map, balls) {
   this.graphic.position.x += this.vel.x; this.graphic.position.y += this.vel.y;
   for (var i = 0; i < balls.length; ++i) {
     var b = balls[i];
@@ -34,6 +34,9 @@ Ball.prototype.ballCollisions = function (balls) {
     var dx = b.graphic.position.x - this.graphic.position.x, dy = b.graphic.position.y - this.graphic.position.y;
     var d = Math.sqrt(distanceSq(this.graphic.position, b.graphic.position));
     if (d < this.radius + b.radius && b != this) {
+      this.graphic.position.x -= this.vel.x; this.graphic.position.y -= this.vel.y;
+      dx = b.graphic.position.x - this.graphic.position.x, dy = b.graphic.position.y - this.graphic.position.y;
+      d = Math.sqrt(distanceSq(this.graphic.position, b.graphic.position));
       this.graphic.position.x += dx*(1-(this.radius+b.radius)/d);
       this.graphic.position.y += dy*(1-(this.radius+b.radius)/d);
       var mass = Math.min(this.radius*this.radius, b.radius*b.radius);
@@ -42,6 +45,8 @@ Ball.prototype.ballCollisions = function (balls) {
       this.vel.y += moment.y/(this.radius*this.radius);
       b.vel.x -= moment.x/(b.radius*b.radius);
       b.vel.y -= moment.y/(b.radius*b.radius);
+      b.tileCollisions(map);
+      this.ballCollisions(map, balls);
     }
   }
 }
@@ -49,7 +54,6 @@ Ball.prototype.ballCollisions = function (balls) {
 Ball.prototype.tileCollisions = function (map) {
   var tilePos =
     {x: Math.floor((this.graphic.position.x-this.radius)/map.tileLength), y: Math.floor((this.graphic.position.y-this.radius)/map.tileLength), X: Math.ceil((this.graphic.position.x+this.radius)/map.tileLength), Y: Math.ceil((this.graphic.position.y+this.radius)/map.tileLength)};
-  console.log(tilePos.x + " " + tilePos.X);
   this.graphic.position.x += this.vel.x; this.graphic.position.y += this.vel.y;
   for (var x = Math.max(0, tilePos.x); x <= Math.min(map.dim.x-1, tilePos.X); ++x) {
     for (var y = Math.max(0, tilePos.y); y <= Math.min(map.dim.y-1, tilePos.Y); ++y) {

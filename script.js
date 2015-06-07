@@ -4,8 +4,8 @@ var game = new (function () {
   this.stage = new PIXI.Container(0x000000);
   this.map = new Map(40, 40, this.tileLength);
   this.map.makeGraphic(this.renderer);
-  this.players = [new Ball(this.tileLength/2, 200, 200, new ArrowKeyInput()),
-    new Ball(this.tileLength/2, 200, 100, {x: 0, y: 0})];
+  this.players = [new Ball(this.tileLength, 200, 200, new ArrowKeyInput()),
+    new Ball(this.tileLength/2, 200, 100, new WASDInput())];
 });
 
 document.body.appendChild(game.renderer.view);
@@ -15,12 +15,12 @@ for (var i = 0; i < game.players.length; ++i) {
   game.stage.addChild(game.players[i].graphic);
 }
 
-// renderer.view.addEventListener('click', function (event) {
-//  var globalCoords = {x: event.pageX - relativeToBall.position.x, y: event.pageY - relativeToBall.position.y};
+game.renderer.view.addEventListener('click', function (event) {
+  var globalCoords = {x: event.pageX, y: event.pageY};
   
-//  var tileX = Math.floor(globalCoords.x/tileLength), tileY = Math.floor(globalCoords.y/tileLength);
-//  setTile(tileX, tileY, (tiles[tileX][tileY]+1)%3);
-//});
+  var tileX = Math.floor(globalCoords.x/game.tileLength), tileY = Math.floor(globalCoords.y/game.tileLength);
+  game.map.setTile(tileX, tileY, (game.map.tiles[tileX][tileY]+1)%3);
+});
 
 animate();
 

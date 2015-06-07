@@ -10,12 +10,10 @@ function Map(w, h, tileLength) {
       this.tiles[w][h] = 0;
     }
   }
-  this.tiles[10][10] = 1;
-  this.tiles[10][11] = 1;
-  this.tiles[11][12] = 1;
 }
 
 function MapGraphic(renderer, map) {
+  this.tileLength = map.tileLength;
   this.texture = new PIXI.RenderTexture(renderer, map.dim.x*map.tileLength, map.dim.y*map.tileLength);
   this.sprite = new PIXI.Sprite(this.texture);
   for (var x = 0; x < map.dim.x; ++x) {
@@ -40,13 +38,13 @@ MapGraphic.prototype.setTile = function (x, y, n) {
   var block = new PIXI.Graphics();
   block.lineStyle(1);
   var color;
-  switch (this.map.tiles[x][y]) {
+  switch (n) {
     case 0: color = 0x000345; break;
     case 1: color = 0x3955F8; break;
     case 2: color = 0x57BD35; break;
   }
   block.beginFill(color);
-  block.drawRect(x*this.map.tileLength, y*this.map.tileLength, this.map.tileLength, this.map.tileLength);
+  block.drawRect(x*this.tileLength, y*this.tileLength, this.tileLength, this.tileLength);
   this.texture.render(block);
 }
 
