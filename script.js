@@ -1,14 +1,7 @@
-var dimensions = {x: 20, y: 15};
+var dimensions = {x: 40, y: 40};
+var winSize = {x: 640, y: 480};
 var dimInit = dimensions;
 tiles = [];
-dimX = dimensions.x;
-while (dimX--) {
-  dimY = dimensions.y;
-  tiles[dimX] = [];
-  while(dimY--) {
-    tiles[dimX][dimY] = 0;
-  }
-}
 
 var vel = {x: 0, y: 0}, accel = {x:0, y: 0};
 var input = {x: 0, y: 0};
@@ -37,44 +30,68 @@ body.keypress(function (event) {
   input.y = Math.max(Math.min(input.y, 1), -1);
 });
 
-var renderer = new PIXI.autoDetectRenderer(dimensions.x*tileLength, dimensions.y*tileLength);
+var renderer = new PIXI.CanvasRenderer(winSize.x, winSize.y);
 document.body.appendChild(renderer.view);
 
-var stage = new PIXI.Container();
-var tileTexture = new PIXI.RenderTexture(dimensions.x*tileLength, dimensions.y*tileLength);
-var tileSprite = new PIXI.Sprite(tileTexture);
-stage.addChild(tileSprite);
+var stage = new PIXI.Container(0x000000);
 
-renderer.view.addEventListener('click', function (event) {
-  var tileX = Math.floor(event.pageX/tileLength), tileY = Math.floor(event.pageY/tileLength);
-  tiles[tileX][tileY] = !tiles[tileX][tileY];
-  var block = new PIXI.Graphics();
-  block.beginFill(0x3955F8, 1);
-  block.drawRect(0, 0, tileLength, tileLength);
-  block.position.x = tileX*tileLength;
-  block.position.y = tileY*tileLength;
-  tileTexture.render(block, false);
-});
+var relativeToBall = new PIXI.Container();
+stage.addChild(relativeToBall);
 
 var ball = new PIXI.Graphics();
+ball.lineStyle(0);
 ball.beginFill(0xFF0000, 1);
 ball.drawCircle(0, 0, tileLength/2);
-ball.position.x = 400;
-ball.position.y = 300;
-stage.addChild(ball);
-
-var box = new PIXI.Graphics();
-box.beginFill(0x0000FF, 1);
-box.drawRect(0, 0, tileLength, tileLength);
-box.position.x = 300;
-box.position.y = 300;
-stage.addChild(box);
+ball.position.x = winSize.x/2;
+ball.position.y = winSize.y/2;
 
 var point = new PIXI.Graphics();
 point.beginFill(0x00FF00, 1);
 point.drawCircle(0, 0, 3);
-stage.addChild(point);
-point.position = {x: 10, y: 10};
+point.position = {x: -10, y: 10};
+
+var tileTexture = new PIXI.RenderTexture(renderer, dimensions.x*tileLength, dimensions.y*tileLength);
+var tileSprite = new PIXI.Sprite(tileTexture);
+
+relativeToBall.addChild(tileSprite);
+relativeToBall.addChild(ball);
+relativeToBall.addChild(point);
+
+dimX = dimensions.x;
+while (dimX--) {
+  dimY = dimensions.y;
+  tiles[dimX] = [];
+  while(dimY--) {
+    tiles[dimX][dimY] = 0;
+    var block = new PIXI.Graphics();
+    block.lineStyle(1);
+    block.beginFill(0x000345, 1);
+    block.drawRect(dimX*tileLength, dimY*tileLength, tileLength, tileLength);
+    tileTexture.render(block, false);
+  }
+}
+
+renderer.view.addEventListener('click', function (event) {
+  var globalCoords = {x: event.pageX - relativeToBall.position.x, y: event.pageY - relativeToBall.position.y};
+  
+  var tileX = Math.floor(globalCoords.x/tileLength), tileY = Math.floor(globalCoords.y/tileLength);
+  setTile(tileX, tileY, (tiles[tileX][tileY]+1)%3);
+});
+
+var setTile = function (x, y, n) {
+  tiles[x][y] = n;
+  var block = new PIXI.Graphics();
+  block.lineStyle(1);
+  var color;
+  switch (tiles[x][y]) {
+    case 0: color = 0x000345; break;
+    case 1: color = 0x3955F8; break;
+    case 2: color = 0x57BD35; break;
+  }
+  block.beginFill(color);
+  block.drawRect(x*tileLength, y*tileLength, tileLength, tileLength);
+  tileTexture.render(block);
+}
 
 animate();
 
@@ -86,19 +103,34 @@ function animate() {
   vel.x += accel.x; vel.y += accel.y;
   ball.position.x += vel.x;
   ball.position.y += vel.y;
-  collision = collisionPoint({x: ball.position.x, y: ball.position.y, radius: tileLength/2}, 
-      {x: box.position.x, y: box.position.y, width: tileLength, height: tileLength});
-  if (collision) {
-    ball.position.x -= vel.x; ball.position.y -= vel.y;
-    point.position = collision;
-    var dx = collision.x - ball.position.x, dy = collision.y - ball.position.y;
-    dist = Math.sqrt(distanceSq(collision, ball.position));
-    var dvx = -dx*(vel.x*dx + vel.y*dy)/(dx*dx + dy*dy)*(1+bounciness);
-        dvy = -dy*(vel.x*dx + vel.y*dy)/(dx*dx + dy*dy)*(1+bounciness);
-    vel.x += dvx; vel.y += dvy;
-    ball.position.x += vel.x; ball.position.y += vel.y;
+  for (var blockX = 0; blockX < dimensions.x; blockX += 1) {
+    for (var blockY = 0; blockY < dimensions.y; blockY += 1) {
+      if (!tiles[blockX][blockY]) continue;
+      collision = collisionPoint({x: ball.position.x, y: ball.position.y, radius: tileLength/2}, 
+          {x: blockX*tileLength, y: blockY*tileLength, width: tileLength, height: tileLength});
+      if (collision) {
+        switch (tiles[blockX][blockY]) {
+          case 1:
+            ball.position.x -= vel.x; ball.position.y -= vel.y;
+            point.position = collision;
+            var dx = collision.x - ball.position.x, dy = collision.y - ball.position.y;
+            dist = Math.sqrt(distanceSq(collision, ball));
+            var dvx = -dx*(vel.x*dx + vel.y*dy)/(dx*dx + dy*dy)*(1+bounciness);
+                dvy = -dy*(vel.x*dx + vel.y*dy)/(dx*dx + dy*dy)*(1+bounciness);
+            vel.x += dvx; vel.y += dvy;
+            ball.position.x += vel.x; ball.position.y += vel.y;
+            break;
+          case 2:
+            setTile(blockX, blockY, 0);
+            var v = Math.sqrt(vel.x*vel.x + vel.y*vel.y);
+            var rx = vel.x/v, ry = vel.y/v;
+            vel.x = rx*8, vel.y = ry*8;
+            break;
+        }
+      }
+    }
   }
-
+  relativeToBall.position.x = -ball.position.x+winSize.x/2; relativeToBall.position.y = -ball.position.y+winSize.y/2;
   renderer.render(stage);
 }
 
